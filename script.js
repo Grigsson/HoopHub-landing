@@ -135,13 +135,42 @@ window.addEventListener('click', e => {
 
 
 
-//Yandex Maps
-
+// Yandex Maps
 const mapLink = document.getElementById('mapLink');
 const mapModal = document.getElementById('mapModal');
 const closeMap = document.getElementById('closeMap');
 
-let mapInitialized = false; // Чтобы карту не инициализировать каждый раз
+let mapInitialized = false;
+let map; // Делаем карту глобальной для доступа из других функций
+
+// Координаты баскетбольной площадки (Удельная, Санкт-Петербург)
+const basketballCourt = {
+    coords: [60.016428, 30.318315], // Координаты площадки
+    title: "Баскетбольная площадка",
+    description: `
+        <div style="max-width: 280px; font-family: Arial, sans-serif;">
+            <div style="font-size: 16px; font-weight: bold; color: #ff6b00; margin-bottom: 8px;">
+                🏀 Баскетбольная площадка
+            </div>
+            <div style="font-size: 14px; color: #333; margin-bottom: 10px;">
+                <strong>📍 Местоположение:</strong><br>
+                Санкт-Петербург, м Удельная
+            </div>
+            <div style="font-size: 14px; color: #666; margin-bottom: 12px;">
+                Уличная баскетбольная площадка для любительских игр и тренировок.
+            </div>
+            <div style="border-top: 1px solid #eee; padding-top: 8px;">
+                <a href="https://yandex.ru/maps/org/basketbolnaya_ploshchadka/114397382840" 
+                   target="_blank" 
+                   style="display: inline-block; background: #ff6b00; color: white; 
+                          padding: 6px 12px; border-radius: 4px; text-decoration: none; 
+                          font-size: 13px; font-weight: bold;">
+                   Подробнее в Яндекс Картах
+                </a>
+            </div>
+        </div>
+    `
+};
 
 mapLink.addEventListener('click', (e) => {
     e.preventDefault();
@@ -149,20 +178,118 @@ mapLink.addEventListener('click', (e) => {
 
     if (!mapInitialized) {
         ymaps.ready(() => {
-            const map = new ymaps.Map("mapContainer", {
-                center: [59.939095, 30.315868], // Санкт-Петербург
-                zoom: 11,
+            // Создаем карту, центрируем на площадке
+            map = new ymaps.Map("mapContainer", {
+                center: basketballCourt.coords, // Центр на баскетбольной площадке
+                zoom: 16, // Ближе, чтобы лучше видеть площадку
+                controls: ['zoomControl', 'fullscreenControl', 'typeSelector']
             });
+
+            // Добавляем метку баскетбольной площадки
+            addBasketballCourtMarker();
+            
             mapInitialized = true;
         });
+    } else {
+        // Если карта уже инициализирована, центрируем ее на площадке
+        if (map) {
+            map.setCenter(basketballCourt.coords, 16);
+            // Открываем балун с информацией
+            setTimeout(() => {
+                if (map.geoObjects.getLength() > 0) {
+                    const placemark = map.geoObjects.get(0);
+                    placemark.balloon.open();
+                }
+            }, 300);
+        }
     }
 });
 
-closeMap.addEventListener('click', () => mapModal.style.display = 'none');
+// Функция для добавления метки баскетбольной площадки
+function addBasketballCourtMarker() {
+    // Создаем метку с кастомной иконкой (используем emoji или URL на иконку)
+    const placemark = new ymaps.Placemark(
+        basketballCourt.coords,
+        {
+            balloonContentHeader: `<div style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 5px;">Баскетбольная площадка</div>`,
+            balloonContentBody: basketballCourt.description,
+            hintContent: "🏀 Нажмите для информации"
+        },
+        {
+            // Вариант 1: Используем кастомную иконку через emoji в layout
+            iconLayout: 'default#imageWithContent',
+            iconImageHref: 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+                    <circle cx="20" cy="20" r="18" fill="#ff6b00" stroke="white" stroke-width="2"/>
+                    <text x="20" y="26" font-family="Arial" font-size="20" font-weight="bold" 
+                    text-anchor="middle" fill="white">🏀</text>
+                </svg>
+            `),
+            iconImageSize: [40, 40],
+            iconImageOffset: [-20, -40],
+            
+            // Вариант 2: Стандартная иконка (раскомментировать если нужно)
+            // preset: 'islands#sportCircleIcon',
+            // iconColor: '#ff6b00'
+        }
+    );
 
-window.addEventListener('click', (e) => {
-    if (e.target === mapModal) mapModal.style.display = 'none';
+    // Добавляем метку на карту
+    map.geoObjects.add(placemark);
+    
+    // Автоматически открываем балун с информацией через небольшой таймаут
+    setTimeout(() => {
+        placemark.balloon.open();
+    }, 800);
+}
+
+// Функция для добавления нескольких точек (если захотите добавить еще площадок)
+function addMultipleCourts() {
+    // Пример массива с другими площадками (можно добавить позже)
+    const courts = [
+        {
+            coords: [59.939095, 30.315868],
+            title: "Другая площадка",
+            description: "Описание другой площадки",
+            color: "#1e98ff"
+        }
+    ];
+    
+    courts.forEach(court => {
+        const marker = new ymaps.Placemark(
+            court.coords,
+            {
+                balloonContentHeader: court.title,
+                balloonContentBody: court.description
+            },
+            {
+                preset: 'islands#circleIcon',
+                iconColor: court.color || '#ff6b00'
+            }
+        );
+        map.geoObjects.add(marker);
+    });
+}
+
+// Закрытие модального окна
+closeMap.addEventListener('click', () => {
+    mapModal.style.display = 'none';
 });
+
+// Закрытие по клику вне окна
+window.addEventListener('click', (e) => {
+    if (e.target === mapModal) {
+        mapModal.style.display = 'none';
+    }
+});
+
+// Закрытие по Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && mapModal.style.display === 'flex') {
+        mapModal.style.display = 'none';
+    }
+});
+
 
 
 //Find a game modal
