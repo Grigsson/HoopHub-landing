@@ -135,18 +135,24 @@ window.addEventListener('click', e => {
 
 
 
-// Yandex Maps
+// Yandex Map
+
+// Elements
+
 const mapLink = document.getElementById('mapLink');
 const mapModal = document.getElementById('mapModal');
 const closeMap = document.getElementById('closeMap');
 
+let map = null;
 let mapInitialized = false;
-let map;
 
+
+
+// Data for courts
 
 const basketballCourts = [
     {
-        coords: [60.014643, 30.319742], // Удельная
+        coords: [60.014643, 30.319742],
         title: "Баскетбольная площадка",
         description: `
             <div style="max-width: 280px; font-family: Arial, sans-serif;">
@@ -171,11 +177,10 @@ const basketballCourts = [
                 </div>
             </div>
         `,
-        type: "outdoor",
-        schedule: "Круглосуточно"
+        type: "outdoor"
     },
     {
-        coords: [60.003891, 30.331239], // Политехник
+        coords: [60.003891, 30.331239],
         title: "Баскетбольный зал Политехник",
         description: `
             <div style="max-width: 280px; font-family: Arial, sans-serif;">
@@ -187,13 +192,8 @@ const basketballCourts = [
                     Санкт-Петербург, Политехническая ул.
                 </div>
                 <div style="font-size: 14px; color: #666; margin-bottom: 8px;">
-                    <strong>📅 Расписание любительских игр:</strong><br>
-                    • Понедельник: 19:00-22:00<br>
-                    • Четверг: 19:00-22:00
-                </div>
-                <div style="font-size: 14px; color: #666; margin-bottom: 12px;">
-                    <strong>🎯 Особенности:</strong><br>
-                    Закрытый зал, любительские игры, раздевалки
+                    <strong>📅 Расписание:</strong><br>
+                    Пн и Чт: 19:00–22:00
                 </div>
                 <div style="border-top: 1px solid #eee; padding-top: 8px;">
                     <a href="https://yandex.ru/maps/-/CDqfENX2" 
@@ -206,196 +206,190 @@ const basketballCourts = [
                 </div>
             </div>
         `,
-        type: "indoor",
-        schedule: "Пн и Чт 19:00-22:00",
-        metro: "Политехническая"
+        type: "indoor"
     }
 ];
+
+
+
+// Open modal with map
 
 mapLink.addEventListener('click', (e) => {
     e.preventDefault();
     mapModal.style.display = 'flex';
 
     if (!mapInitialized) {
-        ymaps.ready(() => {
-            // Создаем карту с центром между двумя точками
-            const centerCoords = getCenterBetweenPoints();
-            map = new ymaps.Map("mapContainer", {
-                center: centerCoords,
-                zoom: 13, // Немного уменьшаем zoom, чтобы видеть обе точки
-                controls: ['zoomControl', 'fullscreenControl', 'typeSelector']
-            });
-
-            // Добавляем все площадки на карту
-            addAllBasketballCourts();
-            
-            // Подгоняем карту под все метки
-            fitMapToCourts();
-            
-            mapInitialized = true;
-        });
-    } else {
-        // Если карта уже инициализирована, центрируем и показываем все точки
-        if (map) {
-            const centerCoords = getCenterBetweenPoints();
-            map.setCenter(centerCoords, 13);
-            fitMapToCourts();
-        }
+        initMap();
     }
 });
 
-// Функция для расчета центра между всеми точками
-function getCenterBetweenPoints() {
-    const lats = basketballCourts.map(court => court.coords[0]);
-    const lons = basketballCourts.map(court => court.coords[1]);
-    
-    const avgLat = (Math.max(...lats) + Math.min(...lats)) / 2;
-    const avgLon = (Math.max(...lons) + Math.min(...lons)) / 2;
-    
-    return [avgLat, avgLon];
-}
 
-// Функция для добавления всех площадок
-function addAllBasketballCourts() {
-    basketballCourts.forEach((court, index) => {
-        addCourtMarker(court, index);
+
+// Initialize map
+
+function initMap() {
+    ymaps.ready(() => {
+        mapInitialized = true;
+
+        map = new ymaps.Map("mapContainer", {
+            center: getCenterBetweenPoints(),
+            zoom: 13,
+            controls: ['zoomControl', 'fullscreenControl', 'typeSelector']
+        });
+
+        addAllCourts();
+        fitMapToCourts();
     });
 }
 
-// Функция для добавления одной площадки
-function addCourtMarker(court, index) {
-    // Выбираем цвет и иконку в зависимости от типа площадки
-    const isIndoor = court.type === "indoor";
-    const color = isIndoor ? "#0066cc" : "#ff6b00";
-    const iconText = isIndoor ? "🏀" : "🏀";
-    
-    const placemark = new ymaps.Placemark(
-        court.coords,
-        {
-            balloonContentHeader: `<div style="font-size: 18px; font-weight: bold; color: ${color}; margin-bottom: 5px;">
-                                   ${court.title}</div>`,
-            balloonContentBody: court.description,
-            hintContent: `${iconText} ${court.title}`
-        },
-        {
-            iconLayout: 'default#imageWithContent',
-            iconImageHref: 'data:image/svg+xml;utf8,' + encodeURIComponent(`
-                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
-                    <circle cx="20" cy="20" r="18" fill="${color}" stroke="white" stroke-width="2"/>
-                    <text x="20" y="26" font-family="Arial" font-size="20" font-weight="bold" 
-                          text-anchor="middle" fill="white">${iconText}</text>
-                </svg>
-            `),
-            iconImageSize: [40, 40],
-            iconImageOffset: [-20, -40],
-            
-            // Можно добавить кастомные свойства
-            balloonCloseButton: true,
-            hideIconOnBalloonOpen: false
-        }
-    );
 
-    // Добавляем метку на карту
-    map.geoObjects.add(placemark);
-    
-    // Автоматически открываем балун первой точки
-    if (index === 0) {
-        setTimeout(() => {
-            placemark.balloon.open();
-        }, 1000);
-    }
+
+// Add all basketball courts
+
+function addAllCourts() {
+    basketballCourts.forEach((court, index) => {
+        const isIndoor = court.type === "indoor";
+        const color = isIndoor ? "#0066cc" : "#ff6b00";
+        const iconText = "🏀";
+
+        const placemark = new ymaps.Placemark(
+            court.coords,
+            {
+                balloonContentHeader: `
+                    <div style="font-size: 18px; font-weight: bold; color: ${color}; margin-bottom: 5px;">
+                        ${court.title}
+                    </div>`,
+                balloonContentBody: court.description,
+                hintContent: `${iconText} ${court.title}`
+            },
+            {
+                iconLayout: 'default#imageWithContent',
+                iconImageHref:
+                    'data:image/svg+xml;utf8,' +
+                    encodeURIComponent(`
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40">
+                            <circle cx="20" cy="20" r="18" fill="${color}" stroke="white" stroke-width="2"/>
+                            <text x="20" y="26" font-family="Arial" font-size="20" 
+                                  text-anchor="middle" fill="white">${iconText}</text>
+                        </svg>
+                    `),
+                iconImageSize: [40, 40],
+                iconImageOffset: [-20, -40],
+            }
+        );
+
+        map.geoObjects.add(placemark);
+
+        if (index === 0) {
+            setTimeout(() => placemark.balloon.open(), 700);
+        }
+    });
 }
 
-// Функция для подгонки карты под все точки
+
+
+// Fit map to all markers
+
 function fitMapToCourts() {
-    if (basketballCourts.length > 1) {
-        // Создаем временную коллекцию для расчета границ
-        const tempCollection = new ymaps.GeoObjectCollection();
-        
-        basketballCourts.forEach(court => {
-            const placemark = new ymaps.Placemark(court.coords);
-            tempCollection.add(placemark);
-        });
-        
-        map.setBounds(tempCollection.getBounds(), {
-            checkZoomRange: true,
-            zoomMargin: 50
-        });
-    }
+    map.setBounds(map.geoObjects.getBounds(), {
+        checkZoomRange: true,
+        zoomMargin: 50
+    });
 }
 
-// Добавляем метро для зала Политехник
-function addPolytechnicMetro() {
-    const polytechnicMetro = new ymaps.Placemark(
-        [60.007823, 30.372398], // Станция Политехническая
-        {
-            hintContent: '🚇 Станция метро "Политехническая"',
-            balloonContent: 'Станция метро "Политехническая"<br>Петербургского метрополитена<br>Ближайшая к залу Политехник'
-        },
-        {
-            preset: 'islands#blueMetroCircleIcon',
-            iconColor: '#0055aa'
-        }
-    );
-    
+
+
+// Helper: center between coords
+
+function getCenterBetweenPoints() {
+    const lats = basketballCourts.map(c => c.coords[0]);
+    const lons = basketballCourts.map(c => c.coords[1]);
+
+    return [
+        (Math.max(...lats) + Math.min(...lats)) / 2,
+        (Math.max(...lons) + Math.min(...lons)) / 2
+    ];
+}
+
+
+
+// Close modal + destroy map
+
+function destroyMap() {
     if (map) {
-        map.geoObjects.add(polytechnicMetro);
+        map.destroy();
+        map = null;
+        mapInitialized = false;
     }
 }
 
-// Закрытие модального окна
 closeMap.addEventListener('click', () => {
     mapModal.style.display = 'none';
+    destroyMap();
 });
 
-// Закрытие по клику вне окна
 window.addEventListener('click', (e) => {
     if (e.target === mapModal) {
         mapModal.style.display = 'none';
+        destroyMap();
     }
 });
 
-// Закрытие по Escape
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && mapModal.style.display === 'flex') {
         mapModal.style.display = 'none';
+        destroyMap();
     }
 });
 
-// Опционально: добавляем легенду в модальное окно
-document.addEventListener('DOMContentLoaded', function() {
-    // Добавляем легенду после загрузки DOM
+
+// Legend
+
+function createLegendIfNeeded() {
+
+    if (document.getElementById('mapLegend')) return;
+
     const mapContainer = document.getElementById('mapContainer');
-    if (mapContainer && mapContainer.parentNode) {
-        const legend = document.createElement('div');
-        legend.style.cssText = `
-            margin-top: 15px;
-            padding: 12px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            font-size: 14px;
-            color: #333;
-            border-left: 4px solid #ff6b00;
-        `;
-        legend.innerHTML = `
-            <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                <div style="width: 20px; height: 20px; background: #ff6b00; border-radius: 50%; 
-                            margin-right: 10px; display: flex; align-items: center; justify-content: center; color: white;">🏀</div>
-                <span><strong>Уличная площадка</strong> - открытая</span>
-            </div>
-            <div style="display: flex; align-items: center;">
-                <div style="width: 20px; height: 20px; background: #0066cc; border-radius: 50%; 
-                            margin-right: 10px; display: flex; align-items: center; justify-content: center; color: white;">🏀</div>
-                <span><strong>Закрытый зал</strong> - игры по расписанию</span>
-            </div>
-            <div style="margin-top: 10px; font-size: 13px; color: #666;">
-                Кликните на любую метку для подробной информации
-            </div>
-        `;
-        
-        // Добавляем легенду после карты
-        mapContainer.parentNode.insertBefore(legend, mapContainer.nextSibling);
-    }
+    if (!mapContainer || !mapContainer.parentNode) return;
+
+    const legend = document.createElement('div');
+    legend.id = 'mapLegend';
+    legend.style.cssText = `
+        margin-top: 15px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        font-size: 14px;
+        color: #333;
+        border-left: 4px solid #ff6b00;
+        max-width: 420px;
+    `;
+    legend.innerHTML = `
+        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <div style="width: 20px; height: 20px; background: #ff6b00; border-radius: 50%; 
+                        margin-right: 10px; display: flex; align-items: center; justify-content: center; color: white;">🏀</div>
+            <span><strong>Уличная площадка</strong> - открытая</span>
+        </div>
+        <div style="display: flex; align-items: center;">
+            <div style="width: 20px; height: 20px; background: #0066cc; border-radius: 50%; 
+                        margin-right: 10px; display: flex; align-items: center; justify-content: center; color: white;">🏀</div>
+            <span><strong>Закрытый зал</strong> - игры по расписанию</span>
+        </div>
+        <div style="margin-top: 10px; font-size: 13px; color: #666;">
+            Кликните на любую метку для подробной информации
+        </div>
+    `;
+
+    // Вставляем легенду после контейнера карты
+    mapContainer.parentNode.insertBefore(legend, mapContainer.nextSibling);
+}
+
+
+
+// Ensure legend exists after initial DOM load
+
+document.addEventListener('DOMContentLoaded', () => {
+    createLegendIfNeeded();
 });
 
 
