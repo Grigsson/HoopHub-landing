@@ -227,10 +227,6 @@ function addBasketballCourtMarker() {
             `),
             iconImageSize: [40, 40],
             iconImageOffset: [-20, -40],
-            
-            // Вариант 2: Стандартная иконка (раскомментировать если нужно)
-            // preset: 'islands#sportCircleIcon',
-            // iconColor: '#ff6b00'
         }
     );
 
